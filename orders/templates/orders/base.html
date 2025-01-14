@@ -1,36 +1,24 @@
-{% load static %}
+<!-- orders/templates/orders/base.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Управление заказами{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'orders/styles.css' %}">
+    <title>Управление Кафе</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
 </head>
 <body>
-    <header>
-        <h1>Система управления заказами в кафе</h1>
-        <nav>
-            <a href="{% url 'order_list' %}">Список заказов</a> |
-            <a href="{% url 'order_add' %}">Добавить заказ</a> |
-            <a href="{% url 'revenue_report' %}">Выручка</a> |
-            <a href="/admin/">Админ-панель</a>
-        </nav>
-        <hr>
-    </header>
-    <main>
-        {% if messages %}
-            <ul class="messages">
-                {% for message in messages %}
-                    <li class="{{ message.tags }}">{{ message }}</li>
-                {% endfor %}
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">Кафе</a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item"><a class="nav-link" href="{% url 'item_list' %}">Блюда</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'order_list' %}">Заказы</a></li>
             </ul>
-        {% endif %}
+        </div>
+    </nav>
+    <div class="container mt-4">
         {% block content %}
         {% endblock %}
-    </main>
-    <footer>
-        <hr>
-        <p>&copy; 2025 Кафе</p>
-    </footer>
+    </div>
 </body>
 </html>
