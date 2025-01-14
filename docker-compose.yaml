@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    command: "python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      DEBUG: 1
+      SECRET_KEY: "django-insecure-u69dh2-t_bi7!-a-t=xbw6)4xb$9x*p=-__va8%5dswub78x&m"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      POSTGRES_DB: cafe_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Almaty111
+      DB_HOST: db
+      DB_PORT: 5432
+
+volumes:
+  postgres_data:

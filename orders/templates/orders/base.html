@@ -1,0 +1,36 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Управление заказами{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'orders/styles.css' %}">
+</head>
+<body>
+    <header>
+        <h1>Система управления заказами в кафе</h1>
+        <nav>
+            <a href="{% url 'order_list' %}">Список заказов</a> |
+            <a href="{% url 'order_add' %}">Добавить заказ</a> |
+            <a href="{% url 'revenue_report' %}">Выручка</a> |
+            <a href="/admin/">Админ-панель</a>
+        </nav>
+        <hr>
+    </header>
+    <main>
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li class="{{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        {% block content %}
+        {% endblock %}
+    </main>
+    <footer>
+        <hr>
+        <p>&copy; 2025 Кафе</p>
+    </footer>
+</body>
+</html>
