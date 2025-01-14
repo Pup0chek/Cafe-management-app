@@ -1,9 +1,0 @@
-{% extends 'orders/base.html' %}
-
-{% block title %}Отчет о выручке{% endblock %}
-
-{% block content %}
-<h2>Отчет о выручке</h2>
-<p>Общая выручка за оплаченные заказы: <strong>{{ revenue }} руб.</strong></p>
-<a href="{% url 'order_list' %}">Вернуться к списку заказов</a>
-{% endblock %}

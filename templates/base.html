@@ -1,0 +1,40 @@
+<!-- templates/base.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Управление Кафе</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">Кафе</a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav mr-auto">
+                <!-- Используем пространство имён 'orders' -->
+                <li class="nav-item"><a class="nav-link" href="{% url 'orders:order_list' %}">Заказы</a></li>
+                <!-- Используем пространство имён 'items' -->
+                <li class="nav-item"><a class="nav-link" href="{% url 'items:item_list' %}">Блюда</a></li>
+                <!-- Добавьте другие ссылки по необходимости -->
+            </ul>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <!-- Отображение Сообщений -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Закрыть">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        {% block content %}
+        {% endblock %}
+    </div>
+</body>
+</html>

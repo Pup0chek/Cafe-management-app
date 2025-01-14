@@ -1,10 +1,40 @@
-{% extends 'orders/base.html' %}
+{% extends 'base.html' %}
 
 {% block content %}
 <h2>Создать Заказ</h2>
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
+    
+    <!-- Ошибки Формсета -->
+    {{ formset.management_form }}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Блюдо</th>
+                <th>Количество</th>
+                <th>Удалить</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for form in formset %}
+            <tr>
+                <td>
+                    {{ form.item.errors }}
+                    {{ form.item }}
+                </td>
+                <td>
+                    {{ form.quantity.errors }}
+                    {{ form.quantity }}
+                </td>
+                <td>
+                    {{ form.DELETE }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     <button type="submit" class="btn btn-primary">Создать Заказ</button>
 </form>
+
 {% endblock %}

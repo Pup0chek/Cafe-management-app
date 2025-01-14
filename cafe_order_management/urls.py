@@ -20,5 +20,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path('', include("orders.urls")),
+    path('orders/', include('orders.urls', namespace='orders')),  # Включение URL-приложения orders с пространством имён
+    path('items/', include('items.urls', namespace='items')),
 ]
