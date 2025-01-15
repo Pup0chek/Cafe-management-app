@@ -3,6 +3,7 @@ from django.forms import inlineformset_factory
 from django.contrib import messages
 from django.db.models import Sum
 from django import forms
+from django.db.models import Q
 from .models import Order, OrderItem
 from .forms import OrderForm
 
@@ -51,15 +52,23 @@ def order_list(request):
     # Получение параметров фильтрации из GET-запроса
     table_number = request.GET.get('table_number')
     status = request.GET.get('status')
+    query = request.GET.get('query', '').strip()
 
     # Начальное множество заказов
     orders = Order.objects.all()
 
-    # Применение фильтрации, если параметры заданы
+    # Фильтрация по номеру стола и статусу, если заданы
     if table_number:
         orders = orders.filter(table_number=table_number)
     if status:
         orders = orders.filter(status=status)
+
+    # Дополнительная фильтрация по поисковому запросу
+    if query:
+        orders = orders.filter(
+            Q(table_number__icontains=query) |  # Поиск по номеру стола
+            Q(status__icontains=query)         # Поиск по статусу
+        )
 
     # Получение всех доступных статусов для выпадающего списка
     STATUS_CHOICES = Order.STATUS_CHOICES
@@ -69,6 +78,7 @@ def order_list(request):
         'status_choices': STATUS_CHOICES,
         'current_table_number': table_number or '',
         'current_status': status or '',
+        'query': query,  # Передаём поисковый запрос для отображения
     }
     return render(request, 'orders/order_list.html', context)
 
@@ -100,3 +110,4 @@ def change_order_status(request, order_id):
 def revenue(request):
     total_revenue = Order.objects.filter(status='paid').aggregate(total=Sum('total_price'))['total'] or 0
     return render(request, 'orders/revenue.html', {'total_revenue': total_revenue})
+
