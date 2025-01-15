@@ -3,7 +3,6 @@ from orders.views import *
 
 
 
-
 urlpatterns = [
     path('', order_list, name='order_list'),
     path('/orders/add/', add_order, name='add_order'),

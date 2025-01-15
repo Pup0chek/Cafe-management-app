@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "orders",
     "rest_framework",
     'django.contrib.messages',
+    'api',
 ]
 
 MIDDLEWARE = [
