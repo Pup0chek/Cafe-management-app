@@ -3,8 +3,8 @@
 {% block content %}
 <h2>Список Заказов</h2>
 
-<a href="{% url 'orders:add_order' %}" class="btn btn-success mb-3">Создать Заказ</a>
-<a href="{% url 'orders:revenue' %}" class="btn btn-info mb-3">Общая Выручка</a>
+<a href="{% url 'add_order' %}" class="btn btn-success mb-3">Создать Заказ</a>
+<a href="{% url 'revenue' %}" class="btn btn-info mb-3">Общая Выручка</a>
 
 <table class="table table-bordered">
     <thead>
@@ -36,7 +36,7 @@
             <td>{{ order.get_status_display }}</td>
             <td>
                 <!-- Удаление заказа -->
-                <form method="post" action="{% url 'orders:delete_order' order.id %}" style="display:inline;">
+                <form method="post" action="{% url 'delete_order' order.id %}" style="display:inline;">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Вы уверены?');">
                         Удалить
@@ -44,7 +44,7 @@
                 </form>
                 
                 <!-- Изменение статуса заказа -->
-                <form method="post" action="{% url 'orders:change_order_status' order.id %}" style="display:inline;">
+                <form method="post" action="{% url 'change_order_status' order.id %}" style="display:inline;">
                     {% csrf_token %}
                     <select name="status" onchange="this.form.submit()" class="form-control form-control-sm">
                         {% for code, name in orders.model.STATUS_CHOICES %}

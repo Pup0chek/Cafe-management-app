@@ -2,39 +2,73 @@
 
 {% block content %}
 <h2>Создать Заказ</h2>
+
+<!-- Отображение сообщений об успехе или ошибке -->
+{% if messages %}
+<div>
+    {% for message in messages %}
+    <div class="alert {{ message.tags }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Форма создания заказа -->
 <form method="post">
     {% csrf_token %}
+    
+    <!-- Ошибки основной формы -->
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
     {{ form.as_p }}
     
     <!-- Ошибки Формсета -->
+    {% if formset.non_form_errors %}
+    <div class="alert alert-danger">
+        {{ formset.non_form_errors }}
+    </div>
+    {% endif %}
+    
     {{ formset.management_form }}
-    <table class="table">
+    
+    <table class="table table-bordered">
         <thead>
             <tr>
                 <th>Блюдо</th>
                 <th>Количество</th>
-                <th>Удалить</th>
             </tr>
         </thead>
         <tbody>
             {% for form in formset %}
             <tr>
                 <td>
-                    {{ form.item.errors }}
+                    <!-- Ошибки поля "Блюдо" -->
+                    {% if form.item.errors %}
+                    <div class="alert alert-danger">
+                        {{ form.item.errors }}
+                    </div>
+                    {% endif %}
                     {{ form.item }}
                 </td>
                 <td>
-                    {{ form.quantity.errors }}
+                    <!-- Ошибки поля "Количество" -->
+                    {% if form.quantity.errors %}
+                    <div class="alert alert-danger">
+                        {{ form.quantity.errors }}
+                    </div>
+                    {% endif %}
                     {{ form.quantity }}
-                </td>
-                <td>
-                    {{ form.DELETE }}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    
     <button type="submit" class="btn btn-primary">Создать Заказ</button>
 </form>
-
 {% endblock %}

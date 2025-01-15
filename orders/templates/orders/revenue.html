@@ -3,5 +3,5 @@
 {% block content %}
 <h2>Общая Выручка</h2>
 <p>Общая выручка за оплаченные заказы: <strong>{{ total_revenue|floatformat:2 }} руб.</strong></p>
-<a href="{% url 'orders:order_list' %}" class="btn btn-primary">Назад к списку заказов</a>
+<a href="{% url 'order_list' %}" class="btn btn-primary">Назад к списку заказов</a>
 {% endblock %}

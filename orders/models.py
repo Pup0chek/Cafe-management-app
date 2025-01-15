@@ -30,7 +30,7 @@ class Order(models.Model):
         self.save()
 
     def save(self, *args, **kwargs):
-        self.calculate_total_price()
+        #self.calculate_total_price()
         super().save(*args, **kwargs)
 
     def __str__(self):

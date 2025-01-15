@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.forms import inlineformset_factory
 from django.contrib import messages
 from django.db.models import Sum
-from . import forms
+from django import forms
 from .models import Order, OrderItem
 from .forms import OrderForm
 
@@ -22,20 +22,29 @@ def add_order(request):
     if request.method == 'POST':
         form = OrderForm(request.POST)
         formset = OrderItemFormSet(request.POST)
+
         if form.is_valid() and formset.is_valid():
-            order = form.save(commit=False)
-            order.save()
+            # Сохраняем объект Order
+            order = form.save()
+
+            # Устанавливаем связь с Order для formset и сохраняем formset
             formset.instance = order
             formset.save()
+
+            # Теперь вызываем calculate_total_price
             order.calculate_total_price()
+            order.save()  # Сохраняем изменения после обновления total_price
+
             messages.success(request, 'Заказ успешно создан.')
-            return redirect('orders:order_list')
+            return redirect('order_list')
         else:
             messages.error(request, 'Пожалуйста, исправьте ошибки в форме.')
     else:
         form = OrderForm()
         formset = OrderItemFormSet()
+
     return render(request, 'orders/add_order.html', {'form': form, 'formset': formset})
+
 
 
 def order_list(request):
@@ -72,7 +81,7 @@ def delete_order(request, order_id):
             messages.success(request, 'Заказ успешно удалён.')
         except Exception as e:
             messages.error(request, 'Ошибка при удалении заказа.')
-    return redirect('orders:order_list')
+    return redirect('order_list')
 
 
 def change_order_status(request, order_id):
@@ -85,7 +94,7 @@ def change_order_status(request, order_id):
             messages.success(request, 'Статус заказа успешно обновлён.')
         else:
             messages.error(request, 'Некорректный статус.')
-    return redirect('orders:order_list')
+    return redirect('order_list')
 
 
 def revenue(request):
