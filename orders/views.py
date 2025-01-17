@@ -91,10 +91,14 @@ def add_order(request):
         formset = OrderItemFormSet(request.POST)
 
         if form.is_valid() and formset.is_valid():
-            order = form.save(commit=False)  # Сохраняем заказ без записи в базу данных
-            order.save()  # Сохраняем заказ в базу данных (получаем первичный ключ)
-            formset.instance = order  # Устанавливаем связь с заказом
-            formset.save()  # Сохраняем связанные элементы заказа
+            order = form.save()
+            formset.instance = order
+            formset.save()
+
+            # Пересчет общей стоимости
+            order.calculate_total_price()
+            order.save()  # Сохранение пересчитанной стоимости
+
             messages.success(request, 'Заказ успешно создан.')
             return redirect('order_list')
         else:

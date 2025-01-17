@@ -39,14 +39,13 @@ class Order(models.Model):
             raise ValidationError("Order must contain at least one item.")
 
     def save(self, *args, **kwargs):
-        # Сначала сохраняем заказ, чтобы был создан первичный ключ
+    # Сначала сохраняем заказ, чтобы был создан первичный ключ
         super().save(*args, **kwargs)
 
-        # Пересчитываем общую стоимость
-        self.calculate_total_price()
-
-        # Сохраняем снова после обновления цены
-        super().save(update_fields=['total_price'], *args, **kwargs)
+        # Пересчитываем общую стоимость заказа только если есть связанные элементы
+        if self.pk:  # Убедимся, что заказ уже сохранен
+            self.calculate_total_price()
+            super().save(update_fields=['total_price'])
 
     def __str__(self):
         return f"Order {self.id} - Table {self.table_number}"
