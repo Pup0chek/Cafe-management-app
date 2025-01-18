@@ -46,30 +46,34 @@
             <td>{{ order.table_number }}</td>
             <td>
                 <ul>
-                    {% for order_item in order.orderitem_set.all %}
-                    <li>
-                        {{ order_item.item.name }} x {{ order_item.quantity }} - 
-                        {{ order_item.item.price|floatformat:2 }} руб.
-                    </li>
+                    {% for order_item in order.items %}
+                    <li>{{ order_item.item_name }} x {{ order_item.quantity }}</li>
                     {% endfor %}
                 </ul>
             </td>
             <td>{{ order.total_price|floatformat:2 }} руб.</td>
-            <td>{{ order.get_status_display }}</td>
             <td>
-                <!-- Удаление заказа -->
+                {% if order.status == "pending" %}
+                Ожидание
+                {% elif order.status == "ready" %}
+                Готово
+                {% elif order.status == "paid" %}
+                Оплачено
+                {% else %}
+                Неизвестно
+                {% endif %}
+            </td>
+            <td>
                 <form method="post" action="{% url 'delete_order' order.id %}" style="display:inline;">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Вы уверены?');">
                         Удалить
                     </button>
                 </form>
-                
-                <!-- Изменение статуса заказа -->
                 <form method="post" action="{% url 'change_order_status' order.id %}" style="display:inline;">
                     {% csrf_token %}
-                    <select name="status" onchange="this.form.submit()" class="form-control form-control-sm">
-                        {% for code, name in orders.model.STATUS_CHOICES %}
+                    <select name="status" onchange="this.form.submit()" class="form-control form-control-sm d-inline w-auto">
+                        {% for code, name in status_choices %}
                         <option value="{{ code }}" {% if order.status == code %}selected{% endif %}>{{ name }}</option>
                         {% endfor %}
                     </select>
@@ -78,7 +82,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6">Заказов нет.</td>
+            <td colspan="5" class="text-center">Заказов нет.</td>
         </tr>
         {% endfor %}
     </tbody>

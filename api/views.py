@@ -1,41 +1,106 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from orders.models import Order
-from .serializers import OrderSerializer
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from rest_framework.decorators import api_view
+from orders.models import Order, OrderItem, Item
+from .serializers import OrderSerializer, OrderCreateSerializer, ItemSerializer
+from django.db import models
+
 
 class OrderListCreateAPIView(APIView):
+    """
+    API для работы со списком заказов:
+    - GET: Список заказов с фильтрацией.
+    - POST: Создание нового заказа.
+    """
     def get(self, request):
-        query = request.query_params.get('query', '').strip()
-        orders = Order.objects.all()
+        table_number = request.query_params.get('table_number')
+        status = request.query_params.get('status')
 
-        if query:
-            orders = orders.filter(
-                Q(table_number__icontains=query) |
-                Q(status__icontains=query)
-            )
+        orders = Order.objects.prefetch_related('items__item')
+
+        if table_number:
+            orders = orders.filter(table_number=table_number)
+        if status:
+            orders = orders.filter(status=status)
+
         serializer = OrderSerializer(orders, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = OrderSerializer(data=request.data)
+        serializer = OrderCreateSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 
-@method_decorator(csrf_exempt, name='dispatch')
+
 class OrderDetailAPIView(APIView):
+    """
+    API для работы с конкретным заказом:
+    - GET: Получение деталей заказа.
+    - PATCH: Частичное обновление заказа.
+    - DELETE: Удаление заказа.
+    """
     def get(self, request, pk):
-        order = get_object_or_404(Order, pk=pk)
+        order = get_object_or_404(Order.objects.prefetch_related('items__item'), pk=pk)
         serializer = OrderSerializer(order)
         return Response(serializer.data)
+
+    def patch(self, request, pk):
+        order = get_object_or_404(Order, pk=pk)
+        serializer = OrderSerializer(order, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            order.calculate_total_price()
+            order.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         order = get_object_or_404(Order, pk=pk)
         order.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ItemListAPIView(APIView):
+    """
+    API для получения списка товаров.
+    """
+    def get(self, request):
+        items = Item.objects.all()
+        serializer = ItemSerializer(items, many=True)
+        return Response(serializer.data)
+
+
+class ItemDetailAPIView(APIView):
+    """
+    API для работы с конкретным товаром.
+    """
+    def get(self, request, pk):
+        item = get_object_or_404(Item, pk=pk)
+        serializer = ItemSerializer(item)
+        return Response(serializer.data)
+
+
+@api_view(['GET'])
+def get_revenue(request):
+    """
+    API для получения общей выручки.
+    """
+    try:
+        total_revenue = Order.objects.filter(status='paid').aggregate(
+            total=models.Sum('total_price')
+        )['total'] or 0
+        return Response({'total_revenue': total_revenue})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+class StatusListAPIView(APIView):
+    """API для получения списка статусов."""
+    def get(self, request):
+        return Response(Order.STATUS_CHOICES)

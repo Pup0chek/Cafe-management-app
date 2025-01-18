@@ -1,111 +1,178 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.forms import inlineformset_factory
+from django.http import JsonResponse
+import requests
+from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.db.models import Sum
 from django import forms
-from django.db.models import Q
-from .models import Order, OrderItem
-from .forms import OrderForm
+from django.forms import formset_factory
 
+API_BASE_URL = 'http://localhost:8000/api/'
 
-
+# Форма для добавления товаров в заказ
+class OrderItemForm(forms.Form):
+    item = forms.ChoiceField(
+        choices=[],
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    quantity = forms.IntegerField(
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 1})
+    )
 
 
 def order_list(request):
-    # Получение параметров фильтрации из GET-запроса
-    table_number = request.GET.get('table_number')
-    status = request.GET.get('status')
-    query = request.GET.get('query', '').strip()
+    """Отображение списка заказов с фильтрацией."""
+    # Загрузка статусов через API
+    try:
+        status_response = requests.get(f'{API_BASE_URL}statuses/', timeout=10)
+        status_response.raise_for_status()
+        status_choices = status_response.json()
+    except requests.RequestException as e:
+        messages.error(request, f"Ошибка загрузки статусов: {e}")
+        status_choices = []
 
-    # Начальное множество заказов
-    orders = Order.objects.all()
-
-    # Фильтрация по номеру стола и статусу, если заданы
+    # Получение параметров поиска
+    table_number = request.GET.get('table_number', '')
+    status = request.GET.get('status', '')
+    params = {}
     if table_number:
-        orders = orders.filter(table_number=table_number)
+        params['table_number'] = table_number
     if status:
-        orders = orders.filter(status=status)
+        params['status'] = status
 
-    # Дополнительная фильтрация по поисковому запросу
-    if query:
-        orders = orders.filter(
-            Q(table_number__icontains=query) |  # Поиск по номеру стола
-            Q(status__icontains=query)         # Поиск по статусу
-        )
+    # Загрузка заказов через API
+    try:
+        response = requests.get(f'{API_BASE_URL}orders/', params=params, timeout=10)
+        response.raise_for_status()
+        orders = response.json()
+    except requests.RequestException as e:
+        messages.error(request, f"Ошибка загрузки заказов: {e}")
+        orders = []
 
-    # Получение всех доступных статусов для выпадающего списка
-    STATUS_CHOICES = Order.STATUS_CHOICES
-
-    context = {
+    # Отображение страницы с данными
+    return render(request, 'orders/order_list.html', {
         'orders': orders,
-        'status_choices': STATUS_CHOICES,
-        'current_table_number': table_number or '',
-        'current_status': status or '',
-        'query': query,  
-    }
-    return render(request, 'orders/order_list.html', context)
+        'status_choices': status_choices,
+        'current_table_number': table_number,
+        'current_status': status,
+    })
+
+class OrderItemForm(forms.Form):
+    item = forms.ChoiceField(
+        choices=[],  # Пустой выбор, будет заполнен динамически
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    quantity = forms.IntegerField(
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 1})
+    )
+
+
+def add_order(request):
+    # Получение списка товаров из API
+    try:
+        response = requests.get(f'{API_BASE_URL}items/', timeout=10)
+        response.raise_for_status()
+        items = response.json()
+
+        # Формируем выбор для выпадающего списка
+        item_choices = [(item['id'], item['name']) for item in items]
+    except requests.RequestException as e:
+        messages.error(request, f"Ошибка загрузки товаров: {e}")
+        item_choices = []
+
+    # Устанавливаем выбор товаров для формы
+    OrderItemForm.base_fields['item'].choices = item_choices
+
+    # Создаем FormSet для позиций заказа
+    OrderItemFormSet = formset_factory(OrderItemForm, extra=1, can_delete=True)
+
+    if request.method == 'POST':
+        formset = OrderItemFormSet(request.POST)
+
+        # Получение номера стола
+        table_number = request.POST.get('table_number')
+
+        if formset.is_valid():
+            # Проверка номера стола
+            if not table_number:
+                messages.error(request, "Пожалуйста, укажите номер стола.")
+                return render(request, 'orders/add_order.html', {'formset': formset})
+
+            # Собираем данные для отправки на API
+            order_data = {
+                'table_number': table_number,
+                'status': 'pending',
+                'items': [
+                    {'item': form.cleaned_data['item'], 'quantity': form.cleaned_data['quantity']}
+                    for form in formset if form.cleaned_data and not form.cleaned_data.get('DELETE', False)
+                ]
+            }
+
+            try:
+                # Отправляем данные на API
+                response = requests.post(f'{API_BASE_URL}orders/', json=order_data, timeout=10)
+                response.raise_for_status()
+                messages.success(request, 'Заказ успешно создан.')
+                return redirect('order_list')
+            except requests.RequestException as e:
+                messages.error(request, f"Ошибка создания заказа: {e}")
+        else:
+            messages.error(request, "Пожалуйста, исправьте ошибки в форме.")
+
+    else:
+        formset = OrderItemFormSet()
+
+    return render(request, 'orders/add_order.html', {
+        'formset': formset,
+    })
+
+
 
 
 def delete_order(request, order_id):
-    order = get_object_or_404(Order, id=order_id)
-    if request.method == 'POST':
-        try:
-            order.delete()
-            messages.success(request, 'Заказ успешно удалён.')
-        except Exception as e:
-            messages.error(request, 'Ошибка при удалении заказа.')
+    """Удаление заказа."""
+    try:
+        response = requests.delete(f'{API_BASE_URL}orders/{order_id}/', timeout=10)
+        response.raise_for_status()
+        messages.success(request, 'Заказ успешно удалён.')
+    except requests.RequestException as e:
+        messages.error(request, f"Ошибка при удалении заказа: {e}")
     return redirect('order_list')
 
 
 def change_order_status(request, order_id):
-    order = get_object_or_404(Order, id=order_id)
+    """Изменение статуса заказа."""
     if request.method == 'POST':
         new_status = request.POST.get('status')
-        if new_status in dict(Order.STATUS_CHOICES).keys():
-            order.status = new_status
-            order.save()
+        payload = {'status': new_status}
+
+        try:
+            response = requests.patch(f'{API_BASE_URL}orders/{order_id}/', json=payload, timeout=10)
+            response.raise_for_status()
             messages.success(request, 'Статус заказа успешно обновлён.')
-        else:
-            messages.error(request, 'Некорректный статус.')
+        except requests.RequestException as e:
+            messages.error(request, f"Ошибка при обновлении статуса: {e}")
+
     return redirect('order_list')
 
 
 def revenue(request):
-    total_revenue = Order.objects.filter(status='paid').aggregate(total=Sum('total_price'))['total'] or 0
+    """Отображение общей выручки."""
+    try:
+        # Запрашиваем только заказы со статусом 'paid'
+        response = requests.get(f'{API_BASE_URL}orders/', params={'status': 'paid'}, timeout=10)
+        response.raise_for_status()
+        orders = response.json()
+
+        # Суммируем только оплаченные заказы
+        total_revenue = sum(
+            float(order.get('total_price', 0)) for order in orders if order.get('status') == 'paid'
+        )
+    except requests.RequestException as e:
+        messages.error(request, f"Ошибка при получении выручки: {e}")
+        total_revenue = 0
+    except ValueError as e:
+        messages.error(request, f"Ошибка преобразования данных: {e}")
+        total_revenue = 0
+
     return render(request, 'orders/revenue.html', {'total_revenue': total_revenue})
 
-def add_order(request):
-    OrderItemFormSet = inlineformset_factory(
-        Order, OrderItem,
-        fields=('item', 'quantity'),
-        extra=1,
-        can_delete=True,
-        widgets={
-            'item': forms.Select(attrs={'class': 'form-control'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
-        }
-    )
-
-    if request.method == 'POST':
-        form = OrderForm(request.POST)
-        formset = OrderItemFormSet(request.POST)
-
-        if form.is_valid() and formset.is_valid():
-            order = form.save()
-            formset.instance = order
-            formset.save()
-
-            # Пересчет общей стоимости
-            order.calculate_total_price()
-            order.save()  # Сохранение пересчитанной стоимости
-
-            messages.success(request, 'Заказ успешно создан.')
-            return redirect('order_list')
-        else:
-            messages.error(request, 'Пожалуйста, исправьте ошибки в форме.')
-    else:
-        form = OrderForm()
-        formset = OrderItemFormSet()
-
-    return render(request, 'orders/add_order.html', {'form': form, 'formset': formset})
 

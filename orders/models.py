@@ -13,37 +13,35 @@ class Item(models.Model):
 
 class Order(models.Model):
     table_number = models.IntegerField()
-    items = models.ManyToManyField('Item', through='OrderItem', related_name='orders')
-    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-
+    
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('ready', 'Ready'),
         ('paid', 'Paid'),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def calculate_total_price(self):
-        """Вычисляет и обновляет общую стоимость заказа."""
-        total = self.orderitem_set.aggregate(
-            total=Sum(F('item__price') * F('quantity'))
+        """Calculate the total price of the order."""
+        total = self.items.aggregate(
+            total=Sum(F('quantity') * F('item__price'))
         )['total'] or 0
         self.total_price = total
+        return self.total_price
 
     def clean(self):
         """Ensure the order has at least one item."""
         if not self.pk:
-            # Первичный ключ еще не создан, пропускаем проверку
+            # Skip check for new orders without a primary key
             return
-        if not self.orderitem_set.exists():
+        if not self.items.exists():
             raise ValidationError("Order must contain at least one item.")
 
     def save(self, *args, **kwargs):
-    # Сначала сохраняем заказ, чтобы был создан первичный ключ
+        """Override save to ensure total price is updated."""
         super().save(*args, **kwargs)
-
-        # Пересчитываем общую стоимость заказа только если есть связанные элементы
-        if self.pk:  # Убедимся, что заказ уже сохранен
+        if self.pk:  # Ensure the order is already saved
             self.calculate_total_price()
             super().save(update_fields=['total_price'])
 
@@ -52,8 +50,8 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order, related_name='orderitem_set', on_delete=models.CASCADE)
-    item = models.ForeignKey('Item', on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
+    item = models.ForeignKey(Item, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
 
     class Meta:
