@@ -83,7 +83,7 @@ Cafe-management-app — Этот проект представляет собо�
 ![Общая выручка](/orders/static/orders/revenue.png)
 
 ### Тесты
-![Тесты](./static/tests.png)
-![Покрытие](./static/coverage.png)
+![Тесты](/orders/static/orders/tests.png)
+![Покрытие](/orders/static/orders/coverage.png)
 
 ---
