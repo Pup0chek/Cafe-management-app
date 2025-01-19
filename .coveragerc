@@ -1,0 +1,8 @@
+[run]
+omit =
+    */migrations/*
+    */tests/*
+    cafe_order_management/asgi.py
+    cafe_order_management/wsgi.py
+    orders/forms.py
+    manage.py

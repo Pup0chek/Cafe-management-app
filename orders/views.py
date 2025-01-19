@@ -139,7 +139,6 @@ def delete_order(request, order_id):
 
 
 def change_order_status(request, order_id):
-    """Изменение статуса заказа."""
     if request.method == 'POST':
         new_status = request.POST.get('status')
         payload = {'status': new_status}
@@ -148,9 +147,10 @@ def change_order_status(request, order_id):
             response = requests.patch(f'{API_BASE_URL}orders/{order_id}/', json=payload, timeout=10)
             response.raise_for_status()
             messages.success(request, 'Статус заказа успешно обновлён.')
+            return redirect('order_list')  # Убедитесь, что маршрут `order_list` существует
         except requests.RequestException as e:
             messages.error(request, f"Ошибка при обновлении статуса: {e}")
-
+            return redirect('order_list')
     return redirect('order_list')
 
 
