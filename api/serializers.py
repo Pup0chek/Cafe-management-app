@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from orders.models import Order, OrderItem, Item
 from django.db.models import Sum, F
+from typing import Any, Dict, List
 
 
 class ItemSerializer(serializers.ModelSerializer):
@@ -43,7 +44,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         model = Order
         fields = ('table_number', 'status', 'items')
 
-    def create(self, validated_data):
+    def create(self, validated_data: Dict[str, Any]) -> Order:
         """
         Создание заказа и связанных элементов.
         """
@@ -69,7 +70,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ('id', 'table_number', 'status', 'items', 'total_price')
 
-    def get_total_price(self, obj):
+    def get_total_price(self, obj: Order) -> float:
         """
         Динамически рассчитывает общую стоимость заказа.
         """

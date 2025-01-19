@@ -6,23 +6,24 @@ from django.test import TestCase, Client
 from unittest.mock import patch
 from orders.models import Item, Order, OrderItem
 import json
+from typing import Dict, Any
 
 
 API_BASE_URL = 'http://localhost:8000/api/'
 
 class OrderModelTests(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.item = Item.objects.create(name="Item 1", price=100)
         self.order = Order.objects.create(table_number=1, status="pending")
         self.order_item = OrderItem.objects.create(order=self.order, item=self.item, quantity=2)
 
-    def test_calculate_total_price(self):
+    def test_calculate_total_price(self) -> None:
         self.order.calculate_total_price()
         self.assertEqual(self.order.total_price, 200)
 
 
 class OrdersViewsTests(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.client = Client()
         self.api_base_url = 'http://localhost:8000/api/'
 
@@ -36,10 +37,8 @@ class OrdersViewsTests(TestCase):
         OrderItem.objects.create(order=self.order1, item=self.item1, quantity=2)
         OrderItem.objects.create(order=self.order2, item=self.item2, quantity=1)
 
-    
-
     @patch('requests.get')
-    def test_order_list_view(self, mock_get):
+    def test_order_list_view(self, mock_get) -> None:
         # Мокаем ответы от API
         mock_get.side_effect = [
             Mock(json=lambda: [("pending", "Ожидание"), ("paid", "Оплачено")], status_code=200),  # Статусы
@@ -54,7 +53,7 @@ class OrdersViewsTests(TestCase):
 
     @patch('requests.post')
     @patch('requests.get')
-    def test_add_order_view(self, mock_get, mock_post):
+    def test_add_order_view(self, mock_get, mock_post) -> None:
         """Тест для добавления заказа"""
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = [
@@ -81,13 +80,8 @@ class OrdersViewsTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
 
-
-
-    
-
-
     @patch('requests.get')
-    def test_revenue_view(self, mock_get):
+    def test_revenue_view(self, mock_get) -> None:
         """Тест для получения общей выручки"""
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = [
@@ -97,5 +91,3 @@ class OrdersViewsTests(TestCase):
         response = self.client.get('/orders/revenue/')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "200")
-
-

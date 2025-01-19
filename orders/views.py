@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django import forms
 from django.forms import formset_factory
+from typing import List, Dict, Any
 
 API_BASE_URL = 'http://localhost:8000/api/'
 
@@ -18,21 +19,21 @@ class OrderItemForm(forms.Form):
     )
 
 
-def order_list(request):
+def order_list(request) -> JsonResponse:
     """Отображение списка заказов с фильтрацией."""
     # Загрузка статусов через API
     try:
         status_response = requests.get(f'{API_BASE_URL}statuses/', timeout=10)
         status_response.raise_for_status()
-        status_choices = status_response.json()
+        status_choices: List[Dict[str, str]] = status_response.json()
     except requests.RequestException as e:
         messages.error(request, f"Ошибка загрузки статусов: {e}")
         status_choices = []
 
     # Получение параметров поиска
-    table_number = request.GET.get('table_number', '')
-    status = request.GET.get('status', '')
-    params = {}
+    table_number: str = request.GET.get('table_number', '')
+    status: str = request.GET.get('status', '')
+    params: Dict[str, str] = {}
     if table_number:
         params['table_number'] = table_number
     if status:
@@ -42,7 +43,7 @@ def order_list(request):
     try:
         response = requests.get(f'{API_BASE_URL}orders/', params=params, timeout=10)
         response.raise_for_status()
-        orders = response.json()
+        orders: List[Dict[str, Any]] = response.json()
     except requests.RequestException as e:
         messages.error(request, f"Ошибка загрузки заказов: {e}")
         orders = []
@@ -55,22 +56,14 @@ def order_list(request):
         'current_status': status,
     })
 
-class OrderItemForm(forms.Form):
-    item = forms.ChoiceField(
-        choices=[],  # Пустой выбор, будет заполнен динамически
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
-    quantity = forms.IntegerField(
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 1})
-    )
 
-
-def add_order(request):
+def add_order(request) -> JsonResponse:
+    """Добавление нового заказа."""
     # Получение списка товаров из API
     try:
         response = requests.get(f'{API_BASE_URL}items/', timeout=10)
         response.raise_for_status()
-        items = response.json()
+        items: List[Dict[str, str]] = response.json()
 
         # Формируем выбор для выпадающего списка
         item_choices = [(item['id'], item['name']) for item in items]
@@ -88,7 +81,7 @@ def add_order(request):
         formset = OrderItemFormSet(request.POST)
 
         # Получение номера стола
-        table_number = request.POST.get('table_number')
+        table_number: str = request.POST.get('table_number', '')
 
         if formset.is_valid():
             # Проверка номера стола
@@ -97,7 +90,7 @@ def add_order(request):
                 return render(request, 'orders/add_order.html', {'formset': formset})
 
             # Собираем данные для отправки на API
-            order_data = {
+            order_data: Dict[str, Any] = {
                 'table_number': table_number,
                 'status': 'pending',
                 'items': [
@@ -125,9 +118,7 @@ def add_order(request):
     })
 
 
-
-
-def delete_order(request, order_id):
+def delete_order(request, order_id: int) -> JsonResponse:
     """Удаление заказа."""
     try:
         response = requests.delete(f'{API_BASE_URL}orders/{order_id}/', timeout=10)
@@ -138,10 +129,11 @@ def delete_order(request, order_id):
     return redirect('order_list')
 
 
-def change_order_status(request, order_id):
+def change_order_status(request, order_id: int) -> JsonResponse:
+    """Изменение статуса заказа."""
     if request.method == 'POST':
-        new_status = request.POST.get('status')
-        payload = {'status': new_status}
+        new_status: str = request.POST.get('status', '')
+        payload: Dict[str, str] = {'status': new_status}
 
         try:
             response = requests.patch(f'{API_BASE_URL}orders/{order_id}/', json=payload, timeout=10)
@@ -154,16 +146,16 @@ def change_order_status(request, order_id):
     return redirect('order_list')
 
 
-def revenue(request):
+def revenue(request) -> JsonResponse:
     """Отображение общей выручки."""
     try:
         # Запрашиваем только заказы со статусом 'paid'
         response = requests.get(f'{API_BASE_URL}orders/', params={'status': 'paid'}, timeout=10)
         response.raise_for_status()
-        orders = response.json()
+        orders: List[Dict[str, Any]] = response.json()
 
         # Суммируем только оплаченные заказы
-        total_revenue = sum(
+        total_revenue: float = sum(
             float(order.get('total_price', 0)) for order in orders if order.get('status') == 'paid'
         )
     except requests.RequestException as e:
@@ -174,5 +166,4 @@ def revenue(request):
         total_revenue = 0
 
     return render(request, 'orders/revenue.html', {'total_revenue': total_revenue})
-
 
