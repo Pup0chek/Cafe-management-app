@@ -19,15 +19,8 @@ services:
       - "8000:8000"
     depends_on:
       - db
-    environment:
-      DEBUG: 1
-      SECRET_KEY: "django-insecure-u69dh2-t_bi7!-a-t=xbw6)4xb$9x*p=-__va8%5dswub78x&m"
-      ALLOWED_HOSTS: localhost,127.0.0.1
-      POSTGRES_DB: cafe_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Almaty111
-      DB_HOST: db
-      DB_PORT: 5432
+    env_file:
+      - .env
 
 volumes:
   postgres_data:
