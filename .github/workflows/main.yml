@@ -50,7 +50,7 @@ jobs:
 
     - name: Run tests with pytest
       run: |
-        docker-compose exec web python manage.py test
+        docker-compose exec -T web python manage.py test
 
     - name: Shut down Docker Compose
       run: docker-compose down
