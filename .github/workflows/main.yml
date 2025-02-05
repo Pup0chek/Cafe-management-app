@@ -12,6 +12,18 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      # Запускаем базу данных Postgres (или другую, если используется)
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: Almaty111
+          POSTGRES_DB: cafe_db
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready -U user" --health-timeout=5s --health-retries=5
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -26,9 +38,21 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Install Docker Compose
+      run: |
+        sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+
+    - name: Set up Docker Compose
+      run: docker-compose -f docker-compose.yml up -d
+
+    - name: Wait for the database to be ready
+      run: |
+        docker-compose exec -T db bash -c "until pg_isready -U user -d test_db; do sleep 1; done"
+
     - name: Run tests with pytest
       run: |
-        pip install pytest
-        pip install coverage
-        coverage run --source='.' manage.py test
-        coverage report
+        docker-compose exec -T web bash -c "pytest --maxfail=1 --disable-warnings -q"
+
+    - name: Shut down Docker Compose
+      run: docker-compose down
