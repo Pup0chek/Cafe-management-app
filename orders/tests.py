@@ -7,9 +7,10 @@ from unittest.mock import patch
 from orders.models import Item, Order, OrderItem
 import json
 from typing import Dict, Any
+import os
 
+API_BASE_URL =  os.getenv("API_BASE_URL", "http://localhost:8000/api/")
 
-API_BASE_URL = 'http://localhost:8000/api/'
 
 class OrderModelTests(TestCase):
     def setUp(self) -> None:
@@ -25,7 +26,7 @@ class OrderModelTests(TestCase):
 class OrdersViewsTests(TestCase):
     def setUp(self) -> None:
         self.client = Client()
-        self.api_base_url = 'http://localhost:8000/api/'
+        self.api_base_url =  os.getenv("API_BASE_URL", "http://localhost:8000/api/")
 
         # Создаем тестовые данные
         self.item1 = Item.objects.create(name="Test Item 1", price=100)

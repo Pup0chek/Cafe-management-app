@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django
+  namespace: cafe
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: django
+  template:
+    metadata:
+      labels:
+        app: django
+    spec:
+      containers:
+        - name: django
+          image: elmedvedo/cafe-app:latest   # <-- твой образ
+          imagePullPolicy: Always
+          command: ["gunicorn", "cafe_order_management.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60"]
+          ports:
+            - containerPort: 8000
+          env:
+            - name: API_BASE_URL
+              value: "http://django-service:8000/api/"
+            - name: POSTGRES_DB
+              value: "cafe_db"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: DB_HOST
+              value: "postgres"
+            - name: DB_PORT
+              value: "5432"
+
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: django-secret
+                  key: SECRET_KEY
+            - name: DEBUG
+              valueFrom:
+                secretKeyRef:
+                  name: django-secret
+                  key: DEBUG
+            - name: ALLOWED_HOSTS
+              valueFrom:
+                secretKeyRef:
+                  name: django-secret
+                  key: ALLOWED_HOSTS
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-service
+  namespace: cafe
+spec:
+  selector:
+    app: django
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP

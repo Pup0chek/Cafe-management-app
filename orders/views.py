@@ -5,8 +5,9 @@ from django.contrib import messages
 from django import forms
 from django.forms import formset_factory
 from typing import List, Dict, Any
+import os
 
-API_BASE_URL = 'http://localhost:8000/api/'
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api/")
 
 # Форма для добавления товаров в заказ
 class OrderItemForm(forms.Form):
