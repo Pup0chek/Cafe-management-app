@@ -33,6 +33,8 @@ jobs:
           docker push "$IMAGE:latest"
 
       - name: Apply Kubernetes manifests
+        env:
+          KUBECONFIG: /etc/kubernetes/admin.conf
         run: |
           # применяем манифесты (пути такие же, как ты делал ранее)
           kubectl apply -f k8s/namespace.yaml
