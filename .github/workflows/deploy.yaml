@@ -1,0 +1,47 @@
+name: Build and deploy to local Kubernetes
+
+on:
+  push:
+    branches: [ "ilya" ]    # деплой при пуше в main
+  workflow_dispatch:         # плюс возможность запустить руками из UI
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted     # наш локальный runner
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | \
+            docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build Docker image
+        run: |
+          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/cafe-app"
+          TAG="${{ github.sha }}"
+          # собираем образ и тегируем двумя тегами: коммит и latest
+          docker build -t "$IMAGE:$TAG" -t "$IMAGE:latest" .
+
+      - name: Push Docker image
+        run: |
+          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/cafe-app"
+          TAG="${{ github.sha }}"
+          docker push "$IMAGE:$TAG"
+          docker push "$IMAGE:latest"
+
+      - name: Apply Kubernetes manifests
+        run: |
+          # применяем манифесты (пути такие же, как ты делал ранее)
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/postgres-deployment.yaml
+          kubectl apply -f k8s/django-deployment.yaml
+          kubectl apply -f k8s/ingress.yaml
+
+      - name: Restart Django deployment
+        run: |
+          # перезапускаем деплой, чтобы поды стянули новый latest образ
+          kubectl -n cafe rollout restart deployment django
+          kubectl -n cafe rollout status deployment django
