@@ -43,6 +43,8 @@ jobs:
           kubectl apply -f k8s/ingress.yaml
 
       - name: Restart Django deployment
+        env:
+          KUBECONFIG: /etc/kubernetes/admin.conf
         run: |
           # перезапускаем деплой, чтобы поды стянули новый latest образ
           kubectl -n cafe rollout restart deployment django
