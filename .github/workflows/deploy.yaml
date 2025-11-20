@@ -2,7 +2,7 @@ name: Build and deploy to local Kubernetes
 
 on:
   push:
-    branches: [ "ilya" ]    # деплой при пуше в main
+    branches: [ "ilya" ]    # деплой  при пуше в main
   workflow_dispatch:         # плюс возможность запустить руками из UI
 
 jobs:
