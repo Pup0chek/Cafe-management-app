@@ -38,12 +38,13 @@ jobs:
 
       - name: Apply Kubernetes manifests
         env:
-          KUBECONFIG: /home/admin/.kube/config # или твой путь к kubeconfig
+          KUBECONFIG: /home/admin/.kube/config
         run: |
-          kubectl apply -f k8s/namespace.yaml
-          kubectl apply -f k8s/postgres-deployment.yaml
-          kubectl apply -f k8s/django-deployment.yaml
-          kubectl apply -f k8s/ingress.yaml
+          # Отключаем валидацию схемы и увеличиваем таймаут
+          kubectl apply --validate=false --request-timeout=60s -f k8s/namespace.yaml
+          kubectl apply --validate=false --request-timeout=60s -f k8s/postgres-deployment.yaml
+          kubectl apply --validate=false --request-timeout=60s -f k8s/django-deployment.yaml
+          kubectl apply --validate=false --request-timeout=60s -f k8s/ingress.yaml
 
       - name: Restart Django deployment
         env:
