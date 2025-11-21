@@ -38,7 +38,7 @@ jobs:
 
       - name: Apply Kubernetes manifests
         env:
-          KUBECONFIG: /etc/kubernetes/admin.conf   # или твой путь к kubeconfig
+          KUBECONFIG: /home/admin/.kube/config # или твой путь к kubeconfig
         run: |
           kubectl apply -f k8s/namespace.yaml
           kubectl apply -f k8s/postgres-deployment.yaml
@@ -47,7 +47,7 @@ jobs:
 
       - name: Restart Django deployment
         env:
-          KUBECONFIG: /etc/kubernetes/admin.conf
+          KUBECONFIG: /home/admin/.kube/config
         run: |
           kubectl -n cafe rollout restart deployment django
           kubectl -n cafe rollout status deployment django
