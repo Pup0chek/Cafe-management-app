@@ -1,0 +1,53 @@
+name: CI-CD Local Registry & Helm
+
+on:
+  push:
+    branches: [ "liya" ]
+  workflow_dispatch: {}
+
+jobs:
+  build-push-deploy:
+    name: Build, Push and Deploy via Helm
+    runs-on: self-hosted  # Важно: всё делаем на вашей ВМ
+
+    env:
+      # Настройки реестра и образа
+      REGISTRY_URL: "192.168.0.102:30500"
+      IMAGE_NAME: "cafe-app"
+      # Генерируем уникальный тег на основе хэша коммита (короткий sha)
+      # Это заставит Helm реально обновить поды
+      IMAGE_TAG: "${{ github.sha }}" 
+      KUBECONFIG: "/home/admin/.kube/config"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Image using Podman
+        run: |
+          # Собираем образ с уникальным тегом
+          podman build -t $REGISTRY_URL/$IMAGE_NAME:$IMAGE_TAG .
+
+      - name: Push Image to Local Registry
+        run: |
+          # Пушим в локальный реестр (он без пароля, так что login не нужен)
+          podman push $REGISTRY_URL/$IMAGE_NAME:$IMAGE_TAG
+          
+          # Опционально: можно запушить и latest, чтобы руками было удобно запускать
+          podman tag $REGISTRY_URL/$IMAGE_NAME:$IMAGE_TAG $REGISTRY_URL/$IMAGE_NAME:latest
+          podman push $REGISTRY_URL/$IMAGE_NAME:latest
+
+      - name: Deploy via Helm
+        run: |
+          # Обновляем релиз cafe-app
+          # Передаем новый тег образа, чтобы кубер увидел изменение
+          helm upgrade --install cafe-app ./django-app-chart \
+            --namespace cafe \
+            --create-namespace \
+            --set image.repository="$REGISTRY_URL/$IMAGE_NAME" \
+            --set image.tag="$IMAGE_TAG"
+
+      - name: Verify Deployment
+        run: |
+          # Ждем окончания раскатки
+          kubectl -n cafe rollout status deployment/cafe-app
