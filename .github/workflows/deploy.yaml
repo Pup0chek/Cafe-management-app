@@ -1,55 +1,53 @@
-name: CI-CD
+name: CI-CD Local Registry & Helm
 
 on:
   push:
     branches: [ "liya" ]
-  workflow_dispatch: {}   # запуск из UI вручную
+  workflow_dispatch: {}
 
 jobs:
-  build-and-push:
-    name: Build Docker image and push
-    runs-on: ubuntu-latest      # GitHub-hosted runner, тут уже есть docker
+  build-push-deploy:
+    name: Build, Push and Deploy via Helm
+    runs-on: self-hosted  # Важно: всё делаем на вашей ВМ
+
+    env:
+      # Настройки реестра и образа
+      REGISTRY_URL: "192.168.0.102:30500"
+      IMAGE_NAME: "cafe-app"
+      # Генерируем уникальный тег на основе хэша коммита (короткий sha)
+      # Это заставит Helm реально обновить поды
+      IMAGE_TAG: "${{ github.sha }}" 
+      KUBECONFIG: "/home/admin/.kube/config"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cafe-app:latest
-
-  deploy:
-    name: Deploy to local Kubernetes
-    runs-on: self-hosted        # твой runner в VM
-    needs: build-and-push       # запускается ТОЛЬКО после успешного build
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Apply Kubernetes manifests
-        env:
-          KUBECONFIG: /home/admin/.kube/config
+      - name: Build Image using Podman
         run: |
-          # Отключаем валидацию схемы и увеличиваем таймаут
-          kubectl apply --validate=false --request-timeout=60s -f k8s/namespace.yaml
-          kubectl apply --validate=false --request-timeout=60s -f k8s/postgres-deployment.yaml
-          kubectl apply --validate=false --request-timeout=60s -f k8s/django-deployment.yaml
-          kubectl apply --validate=false --request-timeout=60s -f k8s/ingress.yaml
+          # Собираем образ с уникальным тегом
+          podman build -t $REGISTRY_URL/$IMAGE_NAME:$IMAGE_TAG .
 
-      - name: Restart Django deployment
-        env:
-          KUBECONFIG: /home/admin/.kube/config
+      - name: Push Image to Local Registry
         run: |
-          kubectl -n cafe rollout restart deployment django
-          kubectl -n cafe rollout status deployment django
+          # Пушим в локальный реестр (он без пароля, так что login не нужен)
+          podman push $REGISTRY_URL/$IMAGE_NAME:$IMAGE_TAG
+          
+          # Опционально: можно запушить и latest, чтобы руками было удобно запускать
+          podman tag $REGISTRY_URL/$IMAGE_NAME:$IMAGE_TAG $REGISTRY_URL/$IMAGE_NAME:latest
+          podman push $REGISTRY_URL/$IMAGE_NAME:latest
 
+      - name: Deploy via Helm
+        run: |
+          # Обновляем релиз cafe-app
+          # Передаем новый тег образа, чтобы кубер увидел изменение
+          helm upgrade --install cafe-app ./django-app-chart \
+            --namespace cafe \
+            --create-namespace \
+            --set image.repository="$REGISTRY_URL/$IMAGE_NAME" \
+            --set image.tag="$IMAGE_TAG"
+
+      - name: Verify Deployment
+        run: |
+          # Ждем окончания раскатки
+          kubectl -n cafe rollout status deployment/cafe-app
