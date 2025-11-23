@@ -15,17 +15,24 @@ spec:
       labels:
         app: django
     spec:
-      # Важно для приватного реестра Docker Hub
       imagePullSecrets:
         - name: {{ .Values.imagePullSecretName }}
       containers:
         - name: django
           image: "{{ .Values.django.image.repository }}:{{ .Values.django.image.tag }}"
           imagePullPolicy: Always
-          command: ["gunicorn", "cafe_order_management.wsgi:application", "--bind", "0.0.0.0:8000"]
+          # Увеличим количество workers и timeout для надежности
+          command: ["gunicorn", "cafe_order_management.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "90"]
           ports:
             - containerPort: 8000
           env:
+            # --- ВАЖНОЕ ИСПРАВЛЕНИЕ НИЖЕ ---
+            # Мы указываем путь не на localhost, а на имя Kubernetes сервиса.
+            # Шаблон {{ .Release.Name }}-django раскроется в cafe-release-django
+            - name: API_BASE_URL
+              value: "http://{{ .Release.Name }}-django:8000/api/"
+            
+            # Остальные переменные
             - name: POSTGRES_DB
               value: {{ .Values.postgres.dbName }}
             - name: POSTGRES_USER

@@ -6,8 +6,7 @@ metadata:
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
-    - host: {{ .Values.ingress.host }}
-      http:
+    - http:                            # <--- Обратите внимание: host убрали, дефис перед http
         paths:
           - path: /
             pathType: Prefix
