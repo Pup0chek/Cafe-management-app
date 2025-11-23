@@ -1,0 +1,23 @@
+django:
+  replicas: 3
+  image:
+    repository: elmedvedo/cafe-app 
+    tag: latest
+  service:
+    port: 8000
+  env:
+    debug: "0"
+    allowedHosts: "*"
+
+postgres:
+  image: postgres:15
+  dbName: cafe_db
+  user: postgres
+
+ingress:
+  enabled: true
+  className: nginx
+  host: cafe.local
+
+# Секрет для пулла из приватного реестра
+imagePullSecretName: regcred
